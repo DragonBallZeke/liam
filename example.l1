@@ -1,0 +1,11 @@
+int total
+
+label readnumber(0)
+   msg "Enter a number: "
+   add total, %readint
+endlabel
+
+readnumber
+readnumber
+
+iprint total
