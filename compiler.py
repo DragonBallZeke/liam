@@ -6,17 +6,18 @@ def compile_variables(variables):
     return '\n'.join([key + ' resb ' + variables[key] for key in  variable.keys()])
 
 # a simple layer on top of nasm
-def compile(lines):
+def compile(lines, toplevel=True):
 
+    includes = []
     data = []
     bss = []
     
     symbols = {}
     
-    out = ""
+    text = ""
     i = 0
     while i < len(lines):
-        line = lines[i]
+        line = lines[i].strip()
         if (not line.strip()):
             i += 1
             continue
@@ -28,16 +29,19 @@ def compile(lines):
             else:
                 raise SyntaxError('syntax error in const')
 
-        if directive in ['db', 'dw', 'dd', 'dq']:
-            data.push(line)
-            
-        if directive in ['resb', 'resw', 'resd', 'resq']:
-            bss.push(line)
+        elif directive == 'import':
+            includes += args
+
+        elif directive == 'alloc':
+            bss.append(':'.join(line.split(' ', 1)[1].split(' ', 1)))
+
+        elif directive == 'init':
+            data.append(':'.join(line.split(' ', 1)[1].split(' ', 1)))
                 
-        if directive == 'label':
-            if re.match('\s*label\s+[A-z]+\(\d+\)(\s+using(\s+[a-z]+)+)?\s*', line):
+        elif directive in ['label', 'function']:
+            if re.match('\s*(label|function)\s+[A-z]+\(\d+\)(\s+using(\s+[a-z]+)+)?\s*', line):
                 enclosed_lines = []
-                while line != 'endlabel':
+                while line != 'end':
                     i += 1
                     try:
                         line = lines[i]
@@ -51,26 +55,37 @@ def compile(lines):
                 if 'using' in args:
                     registers = args[2:]
 
-                out +=  '\n'.join([name + ':']
-                                + ['push ' + r for r in registers]
-                                + [compile(enclosed_lines[:-1])[:-1]] # up to last to remove endlabel
-                                + ['pop ' + r for r in registers[::-1]]) # reverse order for LIFO
+                text +=  '\n'.join([name + ':']
+                                   + ['push ' + r for r in registers]
+                                   + [compile(enclosed_lines[:-1], False)[:-1]] # up to last to remove endlabel
+                                   + ['pop ' + r for r in registers[::-1]]) + ('\nret\n' if directive == 'function' else '') + '\n' # reverse order for LIFO
             
             else:
                 raise SyntaxError('Label must be of the form `label mylabel(2) (using eax, ebx,...)`')
         else:
-            out += line + '\n'
+            text += line + '\n'
 
         i += 1
 
-    return 'SECTION .bss\n{bss}\nSECTION .data\n{data}\nSECTION .text\n{text}'.format(bss='\n'.join(bss), data='\n'.join(data), text='\n'.join(text))
-
+    if toplevel:
+        return '\n'.join(["%include 'stdlib/" + include + "'\n" for include in includes]) + 'SECTION .bss\n{bss}\nSECTION .data\n{data}\nSECTION .text\nGLOBAL _start\n{text}\ncall quit'.format(bss='\n'.join(bss), data='\n'.join(data), text=text)
+    else:
+        return text
+    
 print(compile("""
-mov eax, 0
-mov ebx, 2
-label mylabel(2) using eax
-mov eax, 3
-endlabel
+import stdio
+
+init helloworld db "Hello World", 0h
+
+function welcome(0) using eax
+   mov eax, helloworld
+   call sprintLF
+end
+
+label _start(0)
+   call welcome
+   call welcome
+end
 """.split('\n')))
             
             
