@@ -86,24 +86,10 @@ def compile(lines, toplevel=True):
         return '\n'.join(["%include 'stdlib/" + include + "'\n" for include in includes]) + 'SECTION .bss\n{bss}\nSECTION .data\n{data}\nSECTION .text\nGLOBAL _start\n{text}\ncall quit'.format(bss='\n'.join(bss), data='\n'.join(data), text=text)
     else:
         return text
-    
-print(compile("""
-import stdio
 
-extern sprintLF
-
-init helloworld db "Hello World", 0h
-
-function welcome(0) using eax
-   mov eax, helloworld
-   call sprintLF
-end
-
-label _start(0)
-   call welcome
-   call welcome
-end
-""".split('\n')))
+import sys
+with open(sys.argv[1], 'r') as f:
+    print(compile(f.read().split('\n')))
             
             
     
