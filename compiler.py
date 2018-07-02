@@ -8,6 +8,7 @@ def compile_variables(variables):
 # a simple layer on top of nasm
 def compile(lines, toplevel=True):
 
+    procedures = {}
     includes = []
     data = []
     bss = []
@@ -29,6 +30,21 @@ def compile(lines, toplevel=True):
             else:
                 raise SyntaxError('syntax error in const')
 
+        elif directive == 'extern':
+            procedures[args[0]] = {'registers': []}
+            
+        elif directive == 'call':
+            if args[0] in procedures:
+                text += ('\n'.join(['push ' + r for r in procedures[args[0]]['registers']])
+                         + '\n'
+                         + line
+                         + '\n'
+                         + '\n'.join(['pop ' + r for r in procedures[args[0]]['registers']])
+                         + '\n')
+
+            else:
+                raise NameError('undefined procedure')
+            
         elif directive == 'import':
             includes += args
 
@@ -40,14 +56,14 @@ def compile(lines, toplevel=True):
                 
         elif directive in ['label', 'function']:
             if re.match('\s*(label|function)\s+[A-z]+\(\d+\)(\s+using(\s+[a-z]+)+)?\s*', line):
-                enclosed_lines = []
-                while line != 'end':
-                    i += 1
-                    try:
-                        line = lines[i]
-                        enclosed_lines.append(line)
-                    except IndexError:
-                        raise EOFError('Unclosed label.')
+                # enclosed_lines = []
+                # while line != 'end':
+                #     i += 1
+                #     try:
+                #         line = lines[i]
+                #         enclosed_lines.append(line)
+                #     except IndexError:
+                #         raise EOFError('Unclosed label.')
 
                 name = args[0].split('(')[0]
                 arity = args[0].split('(')[1][:-1]
@@ -55,11 +71,10 @@ def compile(lines, toplevel=True):
                 if 'using' in args:
                     registers = args[2:]
 
-                text +=  '\n'.join([name + ':']
-                                   + ['push ' + r for r in registers]
-                                   + [compile(enclosed_lines[:-1], False)[:-1]] # up to last to remove endlabel
-                                   + ['pop ' + r for r in registers[::-1]]) + ('\nret\n' if directive == 'function' else '') + '\n' # reverse order for LIFO
-            
+                procedures[name] = {'registers': registers}
+
+                text += name + ':\n'
+                
             else:
                 raise SyntaxError('Label must be of the form `label mylabel(2) (using eax, ebx,...)`')
         else:
@@ -74,6 +89,8 @@ def compile(lines, toplevel=True):
     
 print(compile("""
 import stdio
+
+extern sprintLF
 
 init helloworld db "Hello World", 0h
 

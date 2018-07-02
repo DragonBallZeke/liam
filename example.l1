@@ -1,11 +1,15 @@
-int total
+import stdio
 
-label readnumber(0)
-   msg "Enter a number: "
-   add total, %readint
-endlabel
+extern sprintLF
 
-readnumber
-readnumber
+init helloworld db "Hello World", 0h
 
-iprint total
+function welcome(0) using eax
+   mov eax, helloworld
+   call sprintLF
+end
+
+label _start(0)
+   call welcome
+   call welcome
+end
