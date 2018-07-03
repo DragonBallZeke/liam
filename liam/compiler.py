@@ -12,6 +12,11 @@ def compile(lines, toplevel=True):
     includes = []
     data = []
     bss = []
+
+    state = 'body'
+    # 0: body
+    # 1: label
+    # 2: function
     
     symbols = {}
     
@@ -53,9 +58,16 @@ def compile(lines, toplevel=True):
 
         elif directive == 'init':
             data.append(':'.join(line.split(' ', 1)[1].split(' ', 1)))
-                
+
+        elif directive == 'end':
+            if state in ['label', 'function']:
+                if state == 'function':
+                    text += 'ret\n'
+                state = 'body'
+            
         elif directive in ['label', 'function']:
             if re.match('\s*(label|function)\s+[A-z]+\(\d+\)(\s+using(\s+[a-z]+)+)?\s*', line):
+                state = directive
                 # enclosed_lines = []
                 # while line != 'end':
                 #     i += 1

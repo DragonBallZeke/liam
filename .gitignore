@@ -1,1 +1,3 @@
-*.egg_info
+MANIFEST
+*.egg-info
+__pycache__
