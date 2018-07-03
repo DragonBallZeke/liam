@@ -87,9 +87,12 @@ def compile(lines, toplevel=True):
     else:
         return text
 
-import sys
-with open(sys.argv[1], 'r') as f:
-    print(compile(f.read().split('\n')))
-            
+def main():
+    import sys
+    with open(sys.argv[1], 'r') as f:
+        print(compile(f.read().split('\n')))
+
+if __name__ == '__main__':
+    main()
             
     
